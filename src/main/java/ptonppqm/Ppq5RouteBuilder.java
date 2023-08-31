@@ -44,12 +44,12 @@ public class Ppq5RouteBuilder extends PpqmRouteBuilder {
                     exchange.getMessage().setBody(ppq2Request);
                     log.info("Received PPQ-5 request and converted to PPQ-2");
                 })
-                .to(ppqmProperties.getPpq2Endpoint())
+                .to(ppqmProperties.getPpq2EndpointUri())
                 .process(exchange -> {
                     ResponseType ppq2Response = exchange.getMessage().getMandatoryBody(ResponseType.class);
                     List<Consent> ppq5Response = XacmlToFhirTranslator.translatePpq2To5Response(ppq2Response);
                     exchange.getMessage().setBody(ppq5Response);
-                    log.info("Received PPQ-5 response and converted to PPQ-5");
+                    log.info("Received PPQ-2 response and converted to PPQ-5");
                 })
         ;
 

@@ -1,0 +1,46 @@
+server:
+  port: 7080
+  ssl:
+    enabled: false
+
+
+logging:
+  level:
+    root: warn
+    ptonppqm: debug
+    org.openehealth.ipf.commons.ihe.fhir.IpfFhirServlet: info
+
+
+spring:
+  application:
+    name: pton-ppqm
+
+
+# see https://camel.apache.org/camel-spring-boot/latest/spring-boot.html
+camel:
+  cloud:
+    enabled: false
+  clustered:
+    controller:
+      enabled: false
+  springboot:
+    jmx-enabled: false
+  rest:
+    port: 7081
+
+
+ipf:
+  atna:
+    audit-enabled: true
+  fhir:
+    servlet:
+      logging: true
+      pretty-print: true
+
+
+pton-ppqm:
+  home-community-id: 1.2.3.4.5.6
+  ppq1-endpoint-uri: ch-ppq1://host:port/ppq1
+  ppq2-endpoint-uri: ch-ppq1://host:port/ppq2
+
+

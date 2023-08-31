@@ -8,6 +8,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+import org.springframework.context.annotation.Import;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.openehealth.ipf.commons.audit.utils.AuditUtils.*;
@@ -16,7 +17,7 @@ import static org.openehealth.ipf.commons.audit.utils.AuditUtils.*;
  * @author Dmytro Rud
  */
 @SpringBootApplication
-//@Import({XdsIGatewayConfiguration.class, DhConfiguration.class, ch.bfh.ti.i4mi.mag.Config.class})
+@Import({PpqmConfiguration.class})
 @EnableConfigurationProperties(PpqmProperties.class)
 public class PpqmApp extends SpringBootServletInitializer {
 

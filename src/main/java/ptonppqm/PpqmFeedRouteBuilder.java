@@ -5,12 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.FhirToXacmlTranslator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
+import org.openehealth.ipf.commons.ihe.xacml20.model.PpqConstants;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.AssertionBasedRequestType;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.EprPolicyRepositoryResponse;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.saml20.assertion.AssertionType;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.saml20.protocol.ResponseType;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.xacml20.saml.assertion.XACMLPolicyStatementType;
 import org.openehealth.ipf.platform.camel.ihe.fhir.core.FhirCamelValidators;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -25,6 +27,7 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
     public static final String PROP_XACML_REQUEST = "ppqm-xacml-request";
     public static final String PROP_POLICY_COUNT  = "ppqm-policy-count";
 
+    @Autowired
     protected PpqmFeedRouteBuilder(
             PpqmProperties ppqmProperties,
             FhirToXacmlTranslator fhirToXacmlTranslator,
@@ -63,8 +66,8 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
                 })
                 .choice()
                     .when(exchangeProperty(PROP_FHIR_METHOD).isEqualTo("PUT"))
-                        .to("direct:handle-put")
-                .endChoice()
+                        .to("direct:handle-put-" + getUriSchema())
+                        .end()
                 .process(exchange -> {
                     Object ppqRequest = createPpqRequest(
                             exchange.getProperty(PROP_FHIR_REQUEST),
@@ -73,7 +76,7 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
                     exchange.setProperty(PROP_XACML_REQUEST, ppqRequest);
                     log.info("Created PPQ-1 {}", ppqRequest.getClass().getSimpleName());
                 })
-                .to(ppqmProperties.getPpq1Endpoint())
+                .to(ppqmProperties.getPpq1EndpointUri())
                 .process(exchange -> {
                     log.info("Received PPQ-1 response, convert it to PPQm");
                     exchange.getMessage().setBody(createPpqmResponse(
@@ -84,14 +87,14 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
         ;
 
 
-        from("direct:handle-put")
+        from("direct:handle-put-" + getUriSchema())
                 .process(exchange -> {
                     List<String> policySetIds = extractPolicySetIds(exchange.getProperty(PROP_FHIR_REQUEST));
                     exchange.setProperty(PROP_POLICY_COUNT, policySetIds.size());
                     exchange.getMessage().setBody(ppqMessageCreator.createPolicyQuery(policySetIds));
                     log.info("Created PPQ-2 request for {} policy set(s)", policySetIds.size());
                 })
-                .to(ppqmProperties.getPpq2Endpoint())
+                .to(ppqmProperties.getPpq2EndpointUri())
                 .process(exchange -> {
                     log.info("Received PPQ-2 response");
                     ResponseType ppq2Response = exchange.getMessage().getMandatoryBody(ResponseType.class);
@@ -113,11 +116,12 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
     }
 
     private static int extractPresentPolicyCount(ResponseType ppq2Response) {
-        if ("urn:oasis:names:tc:xacml:1.0:status:ok".equals(ppq2Response.getStatus().getStatusCode().getValue())) {
+        if ("urn:oasis:names:tc:SAML:2.0:status:Success".equals(ppq2Response.getStatus().getStatusCode().getValue())) {
             AssertionType assertion = (AssertionType) ppq2Response.getAssertionOrEncryptedAssertion().get(0);
-            XACMLPolicyStatementType statement = (XACMLPolicyStatementType) assertion.getStatementOrAuthnStatementOrAuthzDecisionStatement();
+            XACMLPolicyStatementType statement = (XACMLPolicyStatementType) assertion.getStatementOrAuthnStatementOrAuthzDecisionStatement().get(0);
             return statement.getPolicyOrPolicySet().size();
         }
+        log.info("PPQ-2 response is negative");
         return 0;
     }
 

@@ -2,7 +2,6 @@ package ptonppqm;
 
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.FhirToXacmlTranslator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,11 +11,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class PpqmConfiguration {
 
-    @Value("homeCommunityId")
-    private String homeCommunityId;
-
     @Bean
-    public ChPpqMessageCreator ppqMessageCreator() {
+    public ChPpqMessageCreator ppqMessageCreator(PpqmProperties properties) {
+        String homeCommunityId = properties.getHomeCommunityId();
+        if (!homeCommunityId.startsWith("urn:oid:")) {
+            homeCommunityId = "urn:oid:" + homeCommunityId;
+        }
         return new ChPpqMessageCreator(homeCommunityId);
     }
 

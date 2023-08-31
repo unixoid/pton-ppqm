@@ -12,7 +12,7 @@ public class PpqmProperties {
 
     private String homeCommunityId;
 
-    private String ppq1Endpoint;
-    private String ppq2Endpoint;
+    private String ppq1EndpointUri;
+    private String ppq2EndpointUri;
 
 }
