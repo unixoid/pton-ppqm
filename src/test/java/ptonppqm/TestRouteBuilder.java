@@ -2,6 +2,7 @@ package ptonppqm;
 
 import org.apache.neethi.Policy;
 import org.apache.velocity.VelocityContext;
+import org.herasaf.xacml.core.policy.impl.IdReferenceType;
 import org.herasaf.xacml.core.policy.impl.PolicySetType;
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.FhirToXacmlTranslator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
@@ -14,6 +15,7 @@ import org.openehealth.ipf.commons.ihe.xacml20.stub.xacml20.saml.protocol.XACMLP
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.xml.bind.JAXBElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -63,20 +65,32 @@ public class TestRouteBuilder extends PpqmRouteBuilder {
                 .process(exchange -> {
                     log.info("Received PPQ-2 request");
                     XACMLPolicyQueryType ppq2Request = exchange.getMessage().getMandatoryBody(XACMLPolicyQueryType.class);
-                    int requestedCount = ppq2Request.getRequestOrPolicySetIdReferenceOrPolicyIdReference().size();
 
-                    List<PolicySetType> policySets = new ArrayList<>(requestedCount);
+                    /*
+                        Business logic:
+                        1. If the "known" policy set is requested by its ID --> return it.
+                        2. Otherwise, if policy sets are requested by their IDs --> return empty response.
+                        3. Otherwise, i.e. if requested by patient  ID --> return three random policy sets.
+                    */
 
-                    policySets.add(ChPpqPolicySetCreator.createPolicySet("201", new VelocityContext(Map.of(
-                            "id", TestConstants.KNOWN_POLICY_SET_ID,
-                            "eprSpid", "123456789012345678",
-                            "representativeId", "representative123"))));
+                    List<PolicySetType> policySets = new ArrayList<>();
 
-                    for (int i = 1; i < requestedCount; ++i) {
-                        policySets.add(ChPpqPolicySetCreator.createPolicySet("303", new VelocityContext(Map.of(
-                                "id", UUID.randomUUID().toString(),
-                                "eprSpid", "123456789012345678",
-                                "representativeId", UUID.randomUUID().toString()))));
+                    JAXBElement<?> jaxbElement = ppq2Request.getRequestOrPolicySetIdReferenceOrPolicyIdReference().get(0);
+                    if (jaxbElement.getValue() instanceof IdReferenceType) {
+                        IdReferenceType idReference = (IdReferenceType) jaxbElement.getValue();
+                        if (TestConstants.KNOWN_POLICY_SET_ID.equals(idReference.getValue())) {
+                            policySets.add(ChPpqPolicySetCreator.createPolicySet("201", new VelocityContext(Map.of(
+                                    "id", TestConstants.KNOWN_POLICY_SET_ID,
+                                    "eprSpid", TestConstants.EPR_SPID,
+                                    "representativeId", "representative123"))));
+                        }
+                    } else {
+                        for (int i = 0; i < 3; ++i) {
+                            policySets.add(ChPpqPolicySetCreator.createPolicySet("303", new VelocityContext(Map.of(
+                                    "id", UUID.randomUUID().toString(),
+                                    "eprSpid", TestConstants.EPR_SPID,
+                                    "representativeId", UUID.randomUUID().toString()))));
+                        }
                     }
 
                     exchange.getMessage().setBody(ppqMessageCreator.createPositivePolicyQueryResponse(policySets));
