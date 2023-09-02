@@ -1,59 +1,34 @@
 package ptonppqm;
 
-import ca.uhn.fhir.rest.api.MethodOutcome;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.camel.CamelContext;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
-import org.apache.camel.ProducerTemplate;
 import org.apache.camel.support.DefaultExchange;
+import org.hl7.fhir.r4.model.Bundle;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.hl7.fhir.r4.model.Consent;
-import org.junit.jupiter.api.BeforeAll;
+import org.hl7.fhir.r4.model.OperationOutcome;
 import org.junit.jupiter.api.Test;
-import org.openehealth.ipf.commons.ihe.fhir.Constants;
-import org.openehealth.ipf.commons.ihe.xacml20.Xacml20Utils;
+import org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmUtils;
 import org.openehealth.ipf.platform.camel.core.util.Exchanges;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 
-import java.util.Locale;
+import java.util.List;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.create201Consent;
-import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.createUuid;
+import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.*;
 
 /**
  * @author Dmytro Rud
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
-@Import(PpqmApp.class)
-@ActiveProfiles("test")
-@Slf4j
-public class Ppq4Test {
+public class Ppq4Test extends PpqmTestBase {
 
-    @Autowired
-    protected CamelContext camelContext;
-
-    @Autowired
-    protected ProducerTemplate producerTemplate;
-
-    @Value("${server.port}")
-    protected Integer serverPort;
-
-    @BeforeAll
-    public static void beforeAll() {
-        Xacml20Utils.initializeHerasaf();
-        Locale.setDefault(Locale.ENGLISH);
-    }
-
-    private Exchange sendPpq3Request(Object request, String httpMethod) throws Exception {
+    private Exchange send(Bundle request) throws Exception {
         Exchange exchange = new DefaultExchange(camelContext, ExchangePattern.InOut);
         exchange.getMessage().setBody(request);
-        exchange.getMessage().setHeader(Constants.HTTP_METHOD, httpMethod);
-        exchange = producerTemplate.send("ch-ppq3://localhost:" + serverPort + "/fhir", exchange);
+        exchange = producerTemplate.send("ch-ppq4://localhost:" + serverPort + "/fhir", exchange);
         Exception exception = Exchanges.extractException(exchange);
         if (exception != null) {
             throw exception;
@@ -62,27 +37,132 @@ public class Ppq4Test {
     }
 
     @Test
-    public void testPpq3Post() throws Exception {
-        Consent consent = create201Consent(createUuid(), TestConstants.EPR_SPID);
-        Exchange exchange = sendPpq3Request(consent, "POST");
-        MethodOutcome methodOutcome = exchange.getMessage().getMandatoryBody(MethodOutcome.class);
-        assertTrue(methodOutcome.getCreated());
+    public void testPost() throws Exception {
+        List<Consent> consents = List.of(
+                create201Consent(createUuid(), TestConstants.EPR_SPID),
+                create303Consent(createUuid(), TestConstants.EPR_SPID, "rep123", null, null));
+        Bundle requestBundle = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        for (Consent consent : consents) {
+            requestBundle
+                    .addEntry(new Bundle.BundleEntryComponent()
+                            .setRequest(new Bundle.BundleEntryRequestComponent()
+                                    .setUrl("Consent")
+                                    .setMethod(Bundle.HTTPVerb.POST))
+                            .setResource(consent));
+        }
+        requestBundle.getMeta().addProfile(ChPpqmUtils.Profiles.REQUEST_BUNDLE);
+
+        Exchange exchange = send(requestBundle);
+        Bundle responseBundle = exchange.getMessage().getMandatoryBody(Bundle.class);
+
+        assertEquals(Bundle.BundleType.TRANSACTIONRESPONSE, responseBundle.getType());
+        assertEquals(requestBundle.getEntry().size(), responseBundle.getEntry().size());
+        for (Bundle.BundleEntryComponent entry : responseBundle.getEntry()) {
+            assertTrue(entry.getResponse().getStatus().startsWith("201"));
+        }
     }
 
     @Test
-    public void testPpq3PutUnknown() throws Exception {
-        Consent consent = create201Consent(createUuid(), TestConstants.EPR_SPID);
-        Exchange exchange = sendPpq3Request(consent, "PUT");
-        MethodOutcome methodOutcome = exchange.getMessage().getMandatoryBody(MethodOutcome.class);
-        assertTrue(methodOutcome.getCreated());
+    public void testPutAllUnknown() throws Exception {
+        List<Consent> consents = List.of(
+                create201Consent(createUuid(), TestConstants.EPR_SPID),
+                create303Consent(createUuid(), TestConstants.EPR_SPID, "rep123", null, null));
+        Bundle requestBundle = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        for (Consent consent : consents) {
+            requestBundle
+                    .addEntry(new Bundle.BundleEntryComponent()
+                            .setRequest(new Bundle.BundleEntryRequestComponent()
+                                    .setUrl("Consent?identifier=" + ChPpqmUtils.extractConsentId(consent, ChPpqmUtils.ConsentIdTypes.POLICY_SET_ID))
+                                    .setMethod(Bundle.HTTPVerb.PUT))
+                            .setResource(consent));
+        }
+        requestBundle.getMeta().addProfile(ChPpqmUtils.Profiles.REQUEST_BUNDLE);
+
+        Exchange exchange = send(requestBundle);
+        Bundle responseBundle = exchange.getMessage().getMandatoryBody(Bundle.class);
+
+        assertEquals(Bundle.BundleType.TRANSACTIONRESPONSE, responseBundle.getType());
+        assertEquals(requestBundle.getEntry().size(), responseBundle.getEntry().size());
+        for (Bundle.BundleEntryComponent entry : responseBundle.getEntry()) {
+            assertTrue(entry.getResponse().getStatus().startsWith("201"));
+        }
     }
 
     @Test
-    public void testPpq3PutKnown() throws Exception {
-        Consent consent = create201Consent(TestConstants.KNOWN_POLICY_SET_ID, TestConstants.EPR_SPID);
-        Exchange exchange = sendPpq3Request(consent, "PUT");
-        MethodOutcome methodOutcome = exchange.getMessage().getMandatoryBody(MethodOutcome.class);
-        assertTrue((methodOutcome.getCreated() == null) || !methodOutcome.getCreated());
+    public void testPutAllKnown() throws Exception {
+        List<Consent> consents = List.of(
+                create201Consent(TestConstants.KNOWN_POLICY_SET_ID, TestConstants.EPR_SPID));
+        Bundle requestBundle = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        for (Consent consent : consents) {
+            requestBundle
+                    .addEntry(new Bundle.BundleEntryComponent()
+                            .setRequest(new Bundle.BundleEntryRequestComponent()
+                                    .setUrl("Consent?identifier=" + ChPpqmUtils.extractConsentId(consent, ChPpqmUtils.ConsentIdTypes.POLICY_SET_ID))
+                                    .setMethod(Bundle.HTTPVerb.PUT))
+                            .setResource(consent));
+        }
+        requestBundle.getMeta().addProfile(ChPpqmUtils.Profiles.REQUEST_BUNDLE);
+
+        Exchange exchange = send(requestBundle);
+        Bundle responseBundle = exchange.getMessage().getMandatoryBody(Bundle.class);
+
+        assertEquals(Bundle.BundleType.TRANSACTIONRESPONSE, responseBundle.getType());
+        assertEquals(requestBundle.getEntry().size(), responseBundle.getEntry().size());
+        for (Bundle.BundleEntryComponent entry : responseBundle.getEntry()) {
+            assertTrue(entry.getResponse().getStatus().startsWith("200"));
+        }
     }
+
+    @Test
+    public void testPutMixedKnownAndUnknown() throws Exception {
+        List<Consent> consents = List.of(
+                create201Consent(TestConstants.KNOWN_POLICY_SET_ID, TestConstants.EPR_SPID),
+                create303Consent(createUuid(), TestConstants.EPR_SPID, "rep123", null, null));
+        Bundle requestBundle = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        for (Consent consent : consents) {
+            requestBundle
+                    .addEntry(new Bundle.BundleEntryComponent()
+                            .setRequest(new Bundle.BundleEntryRequestComponent()
+                                    .setUrl("Consent?identifier=" + ChPpqmUtils.extractConsentId(consent, ChPpqmUtils.ConsentIdTypes.POLICY_SET_ID))
+                                    .setMethod(Bundle.HTTPVerb.PUT))
+                            .setResource(consent));
+        }
+        requestBundle.getMeta().addProfile(ChPpqmUtils.Profiles.REQUEST_BUNDLE);
+
+        boolean failed = false;
+        try {
+            Exchange exchange = send(requestBundle);
+        } catch (Exception e) {
+            assertTrue(e instanceof InvalidRequestException);
+            assertTrue(e.getMessage().contains("Cannot create PPQ-1 request, because out of 2 policy sets being fed with HTTP method PUT, 1 are already present in the Policy Repository, and 1 are not"));
+            failed = true;
+        }
+        assertTrue(failed);
+    }
+
+    @Test
+    public void testDelete() throws Exception {
+        Bundle requestBundle = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        for (int i = 0; i < 3; ++i) {
+            requestBundle
+                    .addEntry(new Bundle.BundleEntryComponent()
+                            .setRequest(new Bundle.BundleEntryRequestComponent()
+                                    .setUrl("Consent?identifier=" + createUuid())
+                                    .setMethod(Bundle.HTTPVerb.DELETE)));
+        }
+        requestBundle.getMeta().addProfile(ChPpqmUtils.Profiles.REQUEST_BUNDLE);
+
+        boolean failed = false;
+        try {
+            Exchange exchange = send(requestBundle);
+        } catch (BaseServerResponseException e) {
+            OperationOutcome operationOutcome = (OperationOutcome) e.getOperationOutcome();
+            assertEquals(1, operationOutcome.getIssue().size());
+            assertTrue(operationOutcome.getIssue().get(0).getDiagnostics().startsWith("<ns1:Fault"));
+            failed = true;
+        }
+        assertTrue(failed);
+    }
+
 
 }

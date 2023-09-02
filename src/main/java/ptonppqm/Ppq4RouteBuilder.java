@@ -54,6 +54,16 @@ public class Ppq4RouteBuilder extends PpqmFeedRouteBuilder {
     }
 
     @Override
+    protected void setHttpMethodPost(Object ppqmRequest) throws Exception {
+        Bundle bundle = (Bundle) ppqmRequest;
+        for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+            entry.getRequest().setMethod(Bundle.HTTPVerb.POST);
+            String url = entry.getRequest().getUrl();
+            entry.getRequest().setUrl(url.substring(0, url.indexOf('?')));
+        }
+    }
+
+    @Override
     protected AssertionBasedRequestType createPpqRequest(Object ppqmRequest, String method) {
         return fhirToXacmlTranslator.translatePpq4To1Request((Bundle) ppqmRequest);
     }

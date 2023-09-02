@@ -51,6 +51,11 @@ public class Ppq3RouteBuilder extends PpqmFeedRouteBuilder {
     }
 
     @Override
+    protected void setHttpMethodPost(Object ppqmRequest) throws Exception {
+        // nop, not applicable for CH:PPQ-3
+    }
+
+    @Override
     protected AssertionBasedRequestType createPpqRequest(Object ppqmRequest, String method) {
         return fhirToXacmlTranslator.translatePpq3To1Request(ppqmRequest, method);
     }

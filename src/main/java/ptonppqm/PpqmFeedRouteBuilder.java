@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.FhirToXacmlTranslator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
-import org.openehealth.ipf.commons.ihe.xacml20.model.PpqConstants;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.AssertionBasedRequestType;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.EprPolicyRepositoryResponse;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.saml20.assertion.AssertionType;
@@ -36,14 +35,42 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
         super(ppqmProperties, fhirToXacmlTranslator, ppqMessageCreator);
     }
 
+    /**
+     * @return static value -- CH:PPQm Camel component schema served by this route builder.
+     */
     abstract protected String getUriSchema();
 
+    /**
+     * @param exchange Camel exchange containing a request.
+     * @return HTTP method specified of the request.
+     */
     abstract protected String extractHttpMethod(Exchange exchange) throws Exception;
 
+    /**
+     * @param ppqmRequest CH:PPQm request message.
+     * @return policy set IDs contained in the request message.
+     */
     abstract protected List<String> extractPolicySetIds(Object ppqmRequest);
 
+    /**
+     * Changes HTTP method in the <b>body</b> of the CH:PPQm request message (whenever applicable) to POST.
+     * @param ppqmRequest CH:PPQm request message.
+     */
+    abstract protected void setHttpMethodPost(Object ppqmRequest) throws Exception;
+
+    /**
+     * @param ppqmRequest CH:PPQm request message.
+     * @param method HTTP method of the request message.
+     * @return CH:PPQ request message (translation of the CH:PPQm one).
+     */
     abstract protected AssertionBasedRequestType createPpqRequest(Object ppqmRequest, String method);
 
+    /**
+     * @param ppqmRequest CH:PPQm request message.
+     * @param xacmlRequest CH:PPQ request message (translation of the CH:PPQm one).
+     * @param xacmlResponse CH:PPQ response message (from the backend).
+     * @return CH:PPQm response message.
+     */
     abstract protected Object createPpqmResponse(
             Object ppqmRequest,
             AssertionBasedRequestType xacmlRequest,
@@ -105,9 +132,10 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
                     } else if (presentPolicyCount == 0) {
                         log.info("None of the policy sets being fed exists in the Policy Repository, switch HTTP method from PUT to POST");
                         exchange.setProperty(PROP_FHIR_METHOD, "POST");
+                        setHttpMethodPost(exchange.getProperty(PROP_FHIR_REQUEST));
                     } else {
                         throw new InvalidRequestException(String.format(
-                                "Cannot create PPQ-1 request, because out of %d policy sets being fed with HTTP method PUT," +
+                                "Cannot create PPQ-1 request, because out of %d policy sets being fed with HTTP method PUT, " +
                                         "%d are already present in the Policy Repository, and %d are not",
                                 fedPolicyCount, presentPolicyCount, fedPolicyCount - presentPolicyCount));
                     }

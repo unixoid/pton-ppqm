@@ -34,12 +34,11 @@ abstract public class PpqmRouteBuilder extends RouteBuilder {
                     log.info("Received SOAP Fault, translate to FHIR");
                     Exception e = Exchanges.extractException(exchange);
                     SoapFault soapFault = (SoapFault) e.getCause();
-                    exchange.getMessage().setBody(XacmlToFhirTranslator.translateSoapFault(soapFault));
+                    XacmlToFhirTranslator.translateSoapFault(soapFault);
                 })
         ;
 
         onException(Exception.class)
-                .handled(true)
                 .maximumRedeliveries(0)
         ;
     }
