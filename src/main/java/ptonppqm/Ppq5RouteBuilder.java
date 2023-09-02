@@ -51,6 +51,8 @@ public class Ppq5RouteBuilder extends PpqmRouteBuilder {
                     exchange.getMessage().setBody(ppq5Response);
                     log.info("Received PPQ-2 response and converted to PPQ-5");
                 })
+                .setHeader(FhirCamelValidators.VALIDATION_MODE, constant(FhirCamelValidators.MODEL))
+                .process(FhirCamelValidators.itiResponseValidator())
         ;
 
     }

@@ -1,6 +1,5 @@
 package ptonppqm;
 
-import org.apache.neethi.Policy;
 import org.apache.velocity.VelocityContext;
 import org.herasaf.xacml.core.policy.impl.IdReferenceType;
 import org.herasaf.xacml.core.policy.impl.PolicySetType;
@@ -9,7 +8,9 @@ import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqPolicySetCreator;
 import org.openehealth.ipf.commons.ihe.xacml20.model.PpqConstants;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.UnknownPolicySetIdFaultMessage;
-import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.*;
+import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.AssertionBasedRequestType;
+import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.DeletePolicyRequest;
+import org.openehealth.ipf.commons.ihe.xacml20.stub.ehealthswiss.EprPolicyRepositoryResponse;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.xacml20.saml.assertion.XACMLPolicyStatementType;
 import org.openehealth.ipf.commons.ihe.xacml20.stub.xacml20.saml.protocol.XACMLPolicyQueryType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.createUuid;
 import static org.openehealth.ipf.platform.camel.ihe.xacml20.Xacml20CamelValidators.*;
 
 /**
@@ -87,7 +89,7 @@ public class TestRouteBuilder extends PpqmRouteBuilder {
                     } else {
                         for (int i = 0; i < 3; ++i) {
                             policySets.add(ChPpqPolicySetCreator.createPolicySet("303", new VelocityContext(Map.of(
-                                    "id", UUID.randomUUID().toString(),
+                                    "id", createUuid(),
                                     "eprSpid", TestConstants.EPR_SPID,
                                     "representativeId", UUID.randomUUID().toString()))));
                         }

@@ -6,9 +6,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.support.DefaultExchange;
 import org.hl7.fhir.r4.model.Bundle;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.hl7.fhir.r4.model.Consent;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.junit.jupiter.api.Test;
@@ -16,8 +13,9 @@ import org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmUtils;
 import org.openehealth.ipf.platform.camel.core.util.Exchanges;
 
 import java.util.List;
-import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.*;
 
 /**

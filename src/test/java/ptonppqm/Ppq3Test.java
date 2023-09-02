@@ -19,7 +19,7 @@ import static org.openehealth.ipf.commons.ihe.fhir.chppqm.ChPpqmConsentCreator.c
 /**
  * @author Dmytro Rud
  */
-public class Ppq3Test extends PpqmTestBase{
+public class Ppq3Test extends PpqmTestBase {
 
     private Exchange send(Object request, String httpMethod) throws Exception {
         Exchange exchange = new DefaultExchange(camelContext, ExchangePattern.InOut);

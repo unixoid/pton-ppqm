@@ -1,7 +1,5 @@
 package ptonppqm;
 
-import ca.uhn.fhir.rest.api.RequestTypeEnum;
-import ca.uhn.fhir.rest.server.exceptions.MethodNotAllowedException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;

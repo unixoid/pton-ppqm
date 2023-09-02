@@ -111,6 +111,8 @@ abstract public class PpqmFeedRouteBuilder extends PpqmRouteBuilder {
                             exchange.getProperty(PROP_XACML_REQUEST, AssertionBasedRequestType.class),
                             exchange.getMessage().getMandatoryBody(EprPolicyRepositoryResponse.class)));
                 })
+                .setHeader(FhirCamelValidators.VALIDATION_MODE, constant(FhirCamelValidators.MODEL))
+                .process(FhirCamelValidators.itiResponseValidator())
         ;
 
 
