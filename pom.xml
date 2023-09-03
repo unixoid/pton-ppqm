@@ -29,12 +29,13 @@
         <!-- libraries -->
         <camel-version>3.21.0</camel-version>
         <groovy-version>3.0.18</groovy-version>
-        <hapi-fhir-version>6.6.1</hapi-fhir-version>
-        <ipf-version>4.8-m1</ipf-version>
+        <hapi-fhir-version>6.8.0</hapi-fhir-version>
+        <ipf-version>4.8-SNAPSHOT</ipf-version>
         <junit-version>5.9.3</junit-version>
+        <jackson-version>2.15.2</jackson-version>
         <lombok-version>1.18.28</lombok-version>
         <slf4j-version>1.7.36</slf4j-version>
-        <spring-boot-version>2.7.13</spring-boot-version>
+        <spring-boot-version>2.7.15</spring-boot-version>
         <velocity-version>2.3</velocity-version>
     </properties>
 
@@ -85,6 +86,11 @@
             <groupId>org.apache.velocity</groupId>
             <artifactId>velocity-engine-core</artifactId>
             <version>${velocity-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson-version}</version>
         </dependency>
 
         <dependency>

@@ -8,7 +8,8 @@ logging:
   level:
     root: warn
     ptonppqm: debug
-    org.openehealth.ipf.commons.ihe.fhir.IpfFhirServlet: warn
+    org.apache.http.wire: debug
+    org.openehealth.ipf.commons.ihe.fhir.IpfFhirServlet: info
 
 
 spring:

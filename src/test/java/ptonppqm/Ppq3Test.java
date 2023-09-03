@@ -42,6 +42,21 @@ public class Ppq3Test extends PpqmTestBase {
     }
 
     @Test
+    public void testPostFailure() throws Exception {
+        Consent consent = create201Consent(TestConstants.FAILURE_POLICY_SET_ID, TestConstants.EPR_SPID);
+        boolean exceptionHandled = false;
+        try {
+            Exchange exchange = send(consent, "POST");
+        } catch (BaseServerResponseException e) {
+            assertEquals(400, e.getStatusCode());
+            OperationOutcome operationOutcome = (OperationOutcome) e.getOperationOutcome();
+            assertEquals(1, operationOutcome.getIssue().size());
+            exceptionHandled = true;
+        }
+        assertTrue(exceptionHandled);
+    }
+
+    @Test
     public void testPutUnknown() throws Exception {
         Consent consent = create201Consent(createUuid(), TestConstants.EPR_SPID);
         Exchange exchange = send(consent, "PUT");
@@ -58,18 +73,39 @@ public class Ppq3Test extends PpqmTestBase {
     }
 
     @Test
-    public void testDelete() throws Exception {
-        String policySetId = createUuid();
-        boolean failed = false;
+    public void testDeleteKnown() throws Exception {
+        Exchange exchange = send(TestConstants.KNOWN_POLICY_SET_ID, "DELETE");
+        MethodOutcome methodOutcome = exchange.getMessage().getMandatoryBody(MethodOutcome.class);
+    }
+
+    @Test
+    public void testDeleteUnknown() throws Exception {
+        boolean exceptionHandled = false;
         try {
-            Exchange exchange = send(policySetId, "DELETE");
+            Exchange exchange = send(createUuid(), "DELETE");
         } catch (BaseServerResponseException e) {
+            assertEquals(404, e.getStatusCode());
+            OperationOutcome operationOutcome = (OperationOutcome) e.getOperationOutcome();
+            assertEquals(1, operationOutcome.getIssue().size());
+            assertTrue(operationOutcome.getIssue().get(0).getDiagnostics().startsWith("Unknown policy set urn:uuid:"));
+            exceptionHandled = true;
+        }
+        assertTrue(exceptionHandled);
+    }
+
+    @Test
+    public void testDeleteFailure() throws Exception {
+        boolean exceptionHandled = false;
+        try {
+            Exchange exchange = send(TestConstants.FAILURE_POLICY_SET_ID, "DELETE");
+        } catch (BaseServerResponseException e) {
+            assertEquals(400, e.getStatusCode());
             OperationOutcome operationOutcome = (OperationOutcome) e.getOperationOutcome();
             assertEquals(1, operationOutcome.getIssue().size());
             assertTrue(operationOutcome.getIssue().get(0).getDiagnostics().startsWith("<ns1:Fault"));
-            failed = true;
+            exceptionHandled = true;
         }
-        assertTrue(failed);
+        assertTrue(exceptionHandled);
     }
 
 }

@@ -5,6 +5,7 @@ import org.apache.cxf.binding.soap.SoapFault;
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.FhirToXacmlTranslator;
 import org.openehealth.ipf.commons.ihe.fhir.chppqm.translation.XacmlToFhirTranslator;
 import org.openehealth.ipf.commons.ihe.xacml20.ChPpqMessageCreator;
+import org.openehealth.ipf.commons.ihe.xacml20.stub.UnknownPolicySetIdFaultMessage;
 import org.openehealth.ipf.platform.camel.core.util.Exchanges;
 
 /**
@@ -27,6 +28,7 @@ abstract public class PpqmRouteBuilder extends RouteBuilder {
     }
 
     protected void configureExceptionHandling() {
+
         onException(SoapFault.class)
                 .handled(true)
                 .maximumRedeliveries(0)
@@ -35,6 +37,16 @@ abstract public class PpqmRouteBuilder extends RouteBuilder {
                     Exception e = Exchanges.extractException(exchange);
                     SoapFault soapFault = (SoapFault) e.getCause();
                     XacmlToFhirTranslator.translateSoapFault(soapFault);
+                })
+        ;
+
+        onException(UnknownPolicySetIdFaultMessage.class)
+                .handled(true)
+                .maximumRedeliveries(0)
+                .process(exchange -> {
+                    log.info("Received UnknownPolicySetIdFault, translate to FHIR");
+                    UnknownPolicySetIdFaultMessage fault = (UnknownPolicySetIdFaultMessage) Exchanges.extractException(exchange);
+                    XacmlToFhirTranslator.translateUnknownPolicySetIdFault(fault);
                 })
         ;
 
